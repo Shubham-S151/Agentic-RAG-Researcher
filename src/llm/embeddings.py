@@ -1,9 +1,10 @@
+import os
+
 from typing import List
 
 from openai import AsyncOpenAI
 
 from src.config.logging import get_logger
-from src.config.settings import settings
 
 
 logger = get_logger(__name__)
@@ -11,33 +12,41 @@ logger = get_logger(__name__)
 
 class EmbeddingService:
     """
-    Service responsible for generating vector embeddings.
+    Embedding model abstraction.
 
     Supports:
-    - Single text embedding
-    - Batch embedding
 
-    Current provider:
-        OpenAI text-embedding-3-large
+    - document embeddings
+    - query embeddings
+
+    Designed to be replaceable with:
+
+    - HuggingFace models
+    - Ollama embeddings
+    - vLLM embedding servers
     """
 
 
-    def __init__(
-        self,
-        client: AsyncOpenAI | None = None,
-    ):
 
-        self.client = client or AsyncOpenAI(
-            api_key=settings.openai_api_key
+    def __init__(self):
+
+        self.client = AsyncOpenAI(
+
+            api_key=os.getenv(
+                "OPENAI_API_KEY"
+            )
+
         )
 
-        self.model = (
-            settings.embedding_model
+
+        self.model = os.getenv(
+
+            "EMBEDDING_MODEL",
+
+            "text-embedding-3-large"
+
         )
 
-        self.dimension = (
-            settings.embedding_dimension
-        )
 
 
     async def embed_text(
@@ -45,124 +54,134 @@ class EmbeddingService:
         text: str,
     ) -> List[float]:
         """
-        Generate embedding for a single text.
-
-        Used for:
-        - User queries
-        - Small document chunks
+        Generate embedding for one text.
         """
 
-        if not text.strip():
-            raise ValueError(
-                "Cannot embed empty text"
+
+        try:
+
+            response = await self.client.embeddings.create(
+
+                model=self.model,
+
+                input=text,
+
             )
 
 
-        response = await self.client.embeddings.create(
-
-            model=self.model,
-
-            input=text,
-        )
-
-
-        vector = (
-            response
-            .data[0]
-            .embedding
-        )
+            vector = (
+                response
+                .data[0]
+                .embedding
+            )
 
 
-        self._validate_dimension(
-            vector
-        )
+            return vector
 
 
-        return vector
+
+        except Exception as error:
+
+
+            logger.error(
+
+                "Embedding generation failed: %s",
+
+                error,
+
+            )
+
+
+            raise
+
 
 
     async def embed_documents(
         self,
-        documents: List[str],
-        batch_size: int = 100,
+        texts: List[str],
     ) -> List[List[float]]:
         """
-        Generate embeddings for multiple documents.
+        Batch embedding generation.
 
-        Batch processing is important during
-        PDF ingestion because research papers
-        may contain thousands of chunks.
+        Used during indexing.
         """
 
 
-        if not documents:
+        if not texts:
+
             return []
 
 
-        embeddings = []
+
+        try:
+
+            response = await self.client.embeddings.create(
+
+                model=self.model,
+
+                input=texts,
+
+            )
 
 
-        for start in range(
-            0,
-            len(documents),
-            batch_size,
-        ):
 
-            batch = documents[
-                start:start + batch_size
+            vectors = [
+
+                item.embedding
+
+                for item in response.data
+
             ]
 
 
             logger.info(
-                "Embedding batch %s-%s",
-                start,
-                start + len(batch),
+
+                "Generated %s embeddings",
+
+                len(vectors),
+
             )
 
 
-            response = (
-                await self.client.embeddings.create(
-                    model=self.model,
-                    input=batch,
-                )
+            return vectors
+
+
+
+        except Exception as error:
+
+
+            logger.error(
+
+                "Batch embedding failed: %s",
+
+                error,
+
             )
 
 
-            batch_vectors = [
-                item.embedding
-                for item in response.data
-            ]
+            raise
 
 
-            embeddings.extend(
-                batch_vectors
-            )
 
-
-        for vector in embeddings:
-            self._validate_dimension(
-                vector
-            )
-
-
-        return embeddings
-
-
-    def _validate_dimension(
+    async def embed_query(
         self,
-        vector: List[float],
-    ) -> None:
+        query: str,
+    ) -> List[float]:
         """
-        Ensures embedding size matches
-        Qdrant collection configuration.
+        Generate query embedding.
+
+        Separate method because
+        production systems often use
+        different query/document strategies.
         """
 
-        if len(vector) != self.dimension:
 
-            raise ValueError(
-                (
-                    "Embedding dimension mismatch. "
-                    f"Expected {self.dimension}, "
-                    f"received {len(vector)}"
-                )
-            )
+        return await self.embed_text(
+            query
+        )
+
+
+
+# Shared instance
+
+embedding_service = EmbeddingService()
