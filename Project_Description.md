@@ -1,31 +1,385 @@
-Here is a professional, high-density GitHub project description. It is structured to mirror the exact format tech recruiters and engineering managers look for: focusing on architecture, engineering challenges, and business value rather than basic tutorials.
-------------------------------
-## Agentic-RAG-Researcher: Hybrid Context Question-Answering System with Web Search & Precise Citations
-A production-grade, stateful Agentic-RAG pipeline designed for researchers and students to query academic literature. The system intelligently routes queries between an internal vector store of parsed research papers and live internet search, employing advanced reranking and structured metadata parsing to deliver factual answers with verifiable inline citations.
-## 🚀 Key Architectural Features
+## The Goal
 
-* Intent-Based Query Routing: Utilizes an LLM-based router to classify user queries and dynamically branch execution between Local RAG (vector database) and Web RAG (search APIs) based on context freshness and availability.
-* Structure-Aware PDF Parsing: Bypasses naive text extraction by using layout-aware parsing (LlamaParse/Marker) to properly preserve multi-column formatting, tables, and mathematical notations from scientific PDFs.
-* Hierarchical Chunking & Reranking: Implements parent-child document chunking to preserve global context during indexing. Uses a cross-encoder (BGE-Reranker-Large) to prune irrelevant context blocks, reducing LLM context window bloat and context-stuffing costs.
-* Deterministic Citation Mapping: Enforces strict inline metadata binding. Every generated response includes markdown links linked back to exact document chunks containing specific metadata (Title, Authors, Page Number, DOI) or web URLs.
-* Asynchronous Agentic Orchestration: Built on top of LangGraph as a stateful, cyclic agent, enabling graceful error-handling, query rewriting when retrieval yield is low, and token streaming.
+Let's build a project that feels like something an engineer at OpenAI, Anthropic, Microsoft, Databricks, Snowflake, or a GenAI startup would write.
 
-## 🛠️ Tech Stack
+Not just:
 
-* LLM Orchestration: LangGraph / FastAPI
-* Vector Database: Qdrant (Self-hosted via Docker)
-* Embeddings & Reranking: Hugging Face Transformers (BAAI/bge-large-en-v1.5), Cohere API
-* Web Retrieval: Tavily API / Brave Search API
-* Evaluation Framework: Ragas (Monitoring Context Precision, Faithfulness, and Answer Relevance)
-* Deployment: Docker, Streamlit (Frontend), GitHub Actions (CI/CD)
+> "I built a RAG chatbot."
 
-## 📊 Evaluation & Performance Metrics
-(Tip: Fill these numbers in with your actual benchmark results once you run your evaluation script!)
+Instead:
 
-* Faithfulness Rate: Achieved 0.XX score via Ragas, minimizing hallucinations by applying automated strict-context prompt engineering.
-* Latency Optimization: Reduced time-to-first-token (TTFT) by XX% using async streaming endpoints and optimizing vector query payloads.
-* Retrieval Efficiency: Reranking improved Context Recall by XX% compared to naive top-k cosine similarity retrieval.
+> "I designed a modular, production-grade Agentic RAG system with routing, hybrid retrieval, reranking, evaluation, streaming APIs, and structured citations."
 
-------------------------------
-Would you like me to generate the System Architecture Diagram in text format (Mermaid code) so you can render a visual flowchart directly inside this GitHub README?
+That's a much stronger portfolio story.
 
+---
+
+# Project Vision
+
+We'll build a **production-grade Hybrid Agentic RAG system**.
+
+The pipeline will look like this:
+
+```text
+                 User Query
+                      │
+                      ▼
+            Intent Router (Semantic)
+                      │
+      ┌───────────────┼────────────────┐
+      ▼               ▼                ▼
+   Local RAG       Web Search      Hybrid Route
+      │               │                │
+      └───────────────┴────────────────┘
+                      ▼
+             Merge Retrieved Docs
+                      ▼
+             Cross Encoder Reranker
+                      ▼
+         Retrieval Quality Checker
+          │                    │
+          ▼                    ▼
+      Enough?           Rewrite Query
+          │                    │
+          └────────────┬───────┘
+                       ▼
+              Context Builder
+                       ▼
+             Grounded LLM Generation
+                       ▼
+          Structured Citation Mapping
+                       ▼
+          Hallucination Verification
+                       ▼
+              Streaming API Response
+```
+
+---
+
+# Tech Stack
+
+I recommend the following stack.
+
+## Backend
+
+* Python 3.12
+* FastAPI
+* LangGraph
+* Pydantic v2
+* asyncio
+* uvicorn
+
+---
+
+## Vector Database
+
+* Qdrant
+* Docker Compose
+
+---
+
+## Embeddings
+
+Choose one:
+
+Local
+
+* BAAI/bge-large-en-v1.5
+
+or
+
+API
+
+* OpenAI text-embedding-3-large
+
+I'd recommend **starting with OpenAI embeddings** because they simplify development. Once everything works, you can swap in a local embedding model.
+
+---
+
+## LLM
+
+Start with
+
+* GPT-4.1 or GPT-4o
+
+Later add
+
+* Ollama
+* vLLM
+* LiteLLM provider abstraction
+
+---
+
+## Search
+
+Start with
+
+* Tavily
+
+Later support
+
+* Brave
+* SearxNG
+
+---
+
+## Reranker
+
+* BAAI/bge-reranker-large
+
+---
+
+## Evaluation
+
+* Ragas
+
+---
+
+## Frontend
+
+* Streamlit
+
+---
+
+## Deployment
+
+* Docker Compose
+* GitHub Actions
+
+---
+
+# Folder Structure
+
+This is the structure I'd recommend:
+
+```text
+agentic-rag-researcher/
+
+src/
+
+    api/
+        app.py
+        routes.py
+        schemas.py
+        dependencies.py
+        middleware.py
+
+    config/
+        settings.py
+        logging.py
+
+    graph/
+        graph.py
+        state.py
+        nodes.py
+        edges.py
+
+    ingestion/
+        parser.py
+        metadata.py
+        chunking.py
+        embeddings.py
+        indexer.py
+
+    retrieval/
+        vector_store.py
+        retriever.py
+        hybrid.py
+        reranker.py
+        citations.py
+
+    search/
+        base.py
+        tavily.py
+        brave.py
+
+    models/
+        llm.py
+        embeddings.py
+
+    prompts/
+        router.py
+        generator.py
+        verifier.py
+
+    evaluation/
+        ragas_eval.py
+
+    utils/
+        timers.py
+        cache.py
+        exceptions.py
+
+tests/
+
+docker/
+
+streamlit/
+
+scripts/
+
+README.md
+```
+
+This organization separates concerns clearly and makes future extensions straightforward.
+
+---
+
+# Development Roadmap
+
+I recommend building it in phases so that every stage results in a working system.
+
+### Phase 1 – Infrastructure
+
+Focus on the project skeleton and configuration.
+
+Deliverables:
+
+* FastAPI application
+* Configuration management
+* Logging
+* Docker Compose with Qdrant
+* Health endpoints
+
+---
+
+### Phase 2 – Document Ingestion
+
+Implement:
+
+* PDF parsing
+* Metadata extraction
+* Hierarchical chunking
+* Embeddings
+* Qdrant indexing
+
+At the end of this phase, you'll have a searchable vector database.
+
+---
+
+### Phase 3 – Retrieval
+
+Implement:
+
+* Dense retrieval
+* Metadata filtering
+* Parent-child retrieval
+* Configurable retrieval parameters
+
+---
+
+### Phase 4 – Reranking
+
+Implement:
+
+* BGE reranker
+* Batched inference
+* Top-k pruning
+
+---
+
+### Phase 5 – Search
+
+Implement:
+
+* Tavily integration
+* Retry logic
+* Result normalization
+* Caching
+
+---
+
+### Phase 6 – LangGraph
+
+Implement:
+
+* Router node
+* Retrieval nodes
+* Merge node
+* Generation node
+* Verification node
+* Retry loop
+
+---
+
+### Phase 7 – Streaming
+
+Implement:
+
+* Streaming responses
+* Structured citations
+* Token streaming
+
+---
+
+### Phase 8 – Evaluation
+
+Implement:
+
+* Ragas evaluation
+* Benchmark scripts
+* Metrics dashboard
+
+---
+
+# Repository Timeline
+
+Build the project in this order:
+
+1. Repository setup
+2. Configuration
+3. API
+4. Vector database
+5. Embeddings
+6. Ingestion
+7. Retrieval
+8. Search
+9. Reranking
+10. LangGraph
+11. Prompt management
+12. Evaluation
+13. Frontend
+14. Docker
+15. CI/CD
+16. Documentation
+
+Each milestone leaves you with a functioning, testable system.
+
+---
+
+# What We'll Improve Compared to the Current Version
+
+The rebuilt project will address the gaps we identified:
+
+* Replace mock embeddings with a real embedding service.
+* Build a true hybrid retrieval path that combines local and web results.
+* Introduce structured citation objects instead of relying on markdown generation.
+* Add query rewriting and verification loops to the LangGraph workflow.
+* Centralize configuration, logging, and dependency management.
+* Add proper error handling, retries, and graceful degradation.
+* Support streaming responses and evaluation out of the box.
+
+---
+
+## How I Suggest We Work
+
+Rather than rewriting isolated files, we'll build the project **module by module**. That keeps the architecture coherent and avoids accumulating technical debt.
+
+The order I'd use is:
+
+1. Project directory structure
+2. `pyproject.toml` and dependency management
+3. `config/settings.py`
+4. Logging infrastructure
+5. FastAPI application and dependency injection
+6. Pydantic schemas
+7. Qdrant vector store
+8. Embedding service
+9. PDF ingestion pipeline
+10. Retrieval and reranking
+11. Web search abstraction
+12. LangGraph state, nodes, and graph
+13. Streamlit frontend
+14. Docker, testing, evaluation, and CI
+
+By the end, you'll have a repository that not only works but also demonstrates software engineering practices expected in production AI systems.
