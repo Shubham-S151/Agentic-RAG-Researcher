@@ -1,10 +1,10 @@
+import os
+
 from typing import Optional
 
 from openai import AsyncOpenAI
-from openai import APIError, APITimeoutError, RateLimitError
 
 from src.config.logging import get_logger
-from src.config.settings import settings
 
 
 logger = get_logger(__name__)
@@ -12,118 +12,201 @@ logger = get_logger(__name__)
 
 class OpenAIClient:
     """
-    Production wrapper around OpenAI async client.
+    Async wrapper around OpenAI API.
 
-    All LLM communication should go through this class.
+    Responsibilities:
+
+    - Client initialization
+    - Model configuration
+    - Prompt execution
+    - Error handling
     """
 
 
-    def __init__(
-        self,
-        client: Optional[AsyncOpenAI] = None,
-    ):
-        self.client = client or AsyncOpenAI(
-            api_key=settings.openai_api_key
-        )
+    def __init__(self):
 
-        self.generation_model = (
-            settings.generation_model
-        )
-
-        self.router_model = (
-            settings.router_model
+        self.client = AsyncOpenAI(
+            api_key=os.getenv(
+                "OPENAI_API_KEY"
+            )
         )
 
 
-    async def generate(
+        self.model = os.getenv(
+            "OPENAI_MODEL",
+            "gpt-4o-mini"
+        )
+
+
+        self.temperature = float(
+            os.getenv(
+                "LLM_TEMPERATURE",
+                "0.1"
+            )
+        )
+
+
+
+    async def chat(
         self,
         prompt: str,
-        model: Optional[str] = None,
-        temperature: float = 0.2,
+        system_prompt: Optional[str] = None,
     ) -> str:
         """
-        Generate text completion.
+        Execute async chat completion.
 
-        Used for:
-        - Answer generation
-        - Query rewriting
-        - Verification
+        Returns:
+
+        Generated text response.
         """
 
 
-        selected_model = (
-            model
-            if model
-            else self.generation_model
+        messages = []
+
+
+
+        if system_prompt:
+
+            messages.append(
+
+                {
+                    "role":
+                    "system",
+
+                    "content":
+                    system_prompt
+                }
+
+            )
+
+
+
+        messages.append(
+
+            {
+                "role":
+                "user",
+
+                "content":
+                prompt
+            }
+
         )
+
 
 
         try:
 
             response = await self.client.chat.completions.create(
 
-                model=selected_model,
+                model=self.model,
 
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
+                messages=messages,
 
-                temperature=temperature,
+                temperature=self.temperature,
+
             )
 
 
-            return (
+
+            result = (
                 response
                 .choices[0]
                 .message
                 .content
-                or ""
             )
 
 
-        except RateLimitError:
 
-            logger.exception(
-                "OpenAI rate limit exceeded"
+            logger.info(
+                "LLM generation successful"
             )
+
+
+            return result or ""
+
+
+
+        except Exception as error:
+
+
+            logger.error(
+
+                "LLM request failed: %s",
+
+                error,
+
+            )
+
 
             raise
 
 
-        except APITimeoutError:
 
-            logger.exception(
-                "OpenAI request timeout"
-            )
-
-            raise
-
-
-        except APIError:
-
-            logger.exception(
-                "OpenAI API failure"
-            )
-
-            raise
-
-
-    async def route_query(
+    async def structured_output(
         self,
         prompt: str,
-    ) -> str:
+    ):
         """
-        Lightweight model call for routing.
+        Generate JSON structured responses.
 
-        Uses cheaper model because routing
-        does not require large generation ability.
+        Used by:
+
+        - Router
+        - Evaluator
+        - Verification agents
         """
 
-        return await self.generate(
-            prompt=prompt,
-            model=self.router_model,
-            temperature=0,
-        )
+
+        try:
+
+            response = await self.client.chat.completions.create(
+
+                model=self.model,
+
+                messages=[
+                    {
+                        "role":
+                        "user",
+
+                        "content":
+                        prompt
+                    }
+                ],
+
+
+                response_format={
+                    "type":
+                    "json_object"
+                },
+
+
+                temperature=0,
+
+            )
+
+
+            return response.choices[0].message.content
+
+
+
+        except Exception as error:
+
+
+            logger.error(
+
+                "Structured LLM call failed: %s",
+
+                error,
+
+            )
+
+
+            raise
+
+
+
+# Singleton instance
+# Imported by graph nodes
+
+llm_client = OpenAIClient()
