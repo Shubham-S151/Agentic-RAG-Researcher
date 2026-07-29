@@ -280,40 +280,22 @@ Graph:
 
 ```
 agentic-rag-researcher/
-
 ├── src/
-
 │   ├── api/
-
 │   ├── graph/
-
 │   ├── ingestion/
-
 │   ├── retrieval/
-
 │   ├── search/
-
 │   ├── llm/
-
 │   ├── evaluation/
-
 │   └── utils/
-
-
 ├── scripts/
-
 ├── tests/
-
 ├── streamlit/
-
 ├── docker/
-
 ├── data/
-
 ├── docker-compose.yml
-
 ├── pyproject.toml
-
 └── README.md
 ```
 
@@ -522,6 +504,9 @@ This project demonstrates:
 ✅ RAG evaluation pipeline  
 ✅ Production-style repository organization  
 
+## AI-Assisted Development
+
+This project was developed with the assistance of AI coding tools for code review, refactoring suggestions, documentation support, and debugging assistance. The architecture, engineering decisions, and final implementation were designed and validated by the developer.
 
 ---
 
